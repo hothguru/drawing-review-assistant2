@@ -117,6 +117,9 @@ if uploaded_file:
         zip_file.writestr("marketing_summary.docx", marketing_buffer.getvalue())
     zip_buffer.seek(0)
 
-    st.download_button("📦 Download All Files (ZIP)", zip_buffer, file_name="drawing_review_outputs.zip")
-
-            st.download_button("Download Word Summary", f, file_name="drawing_summary.docx")
+    st.download_button(
+        "📦 Download All Files (ZIP)",
+        zip_buffer,
+        file_name="drawing_review_outputs.zip",
+        mime="application/zip"
+    )
