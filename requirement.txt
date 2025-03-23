@@ -1,0 +1,5 @@
+streamlit
+ezdxf
+pymupdf
+python-docx
+pandas
