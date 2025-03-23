@@ -153,7 +153,7 @@ def create_excel_summary(summary_dict):
         worksheet.write(row, 0, "📐 Dimensions")
         row += 1
         worksheet.write(row, 0, "Key Dimensions")
-        worksheet.write(row, 1, summary_dict.get("Key Dimensions", ""))
+        worksheet.write(row, 1, str(summary_dict.get("Key Dimensions", "")))
         row += 2
 
         worksheet.write(row, 0, "🖼 Views Detected")
