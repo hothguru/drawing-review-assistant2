@@ -43,9 +43,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-\"\"\"
+"""
 {text}
-\"\"\"
+"""
 
 Respond in the following JSON format:
 {{
@@ -73,7 +73,6 @@ Respond in the following JSON format:
         st.error(f"❌ OpenAI API error: {str(e)}")
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
-
     return {}
 
 def create_word_summary(summary, filename):
@@ -106,5 +105,17 @@ if uploaded_file:
 
         st.subheader("📥 Download Summary")
         word_path = create_word_summary(summary, "drawing_summary.docx")
-        with open(word_path, "rb") as f:
+            word_buffer = create_word_summary(summary)
+    excel_buffer = create_excel_summary(summary)
+    marketing_buffer = create_marketing_summary(summary)
+
+    zip_buffer = BytesIO()
+    with ZipFile(zip_buffer, "w") as zip_file:
+        zip_file.writestr("technical_summary.docx", word_buffer.getvalue())
+        zip_file.writestr("drawing_summary.xlsx", excel_buffer.getvalue())
+        zip_file.writestr("marketing_summary.docx", marketing_buffer.getvalue())
+    zip_buffer.seek(0)
+
+    st.download_button("📦 Download All Files (ZIP)", zip_buffer, file_name="drawing_review_outputs.zip")
+
             st.download_button("Download Word Summary", f, file_name="drawing_summary.docx")
