@@ -100,15 +100,13 @@ if uploaded_file:
 
     st.subheader("📊 GPT-Powered Technical Summary")
     summary = generate_summary_with_gpt(raw_text)
-    if summary:
-        for key, value in summary.items():
-            st.write(f"**{key}:** {value}")
+   if isinstance(summary, dict) and summary:
+    for key, value in summary.items():
+        st.write(f"**{key}:** {value}")
 
-        st.subheader("📥 Download Summary")
-        word_path = create_word_summary(summary, "drawing_summary.docx")
-        word_buffer = create_word_summary(summary)
-        excel_buffer = create_excel_summary(summary)
-        marketing_buffer = create_marketing_summary(summary)
+    word_buffer = create_word_summary(summary)
+    excel_buffer = create_excel_summary(summary)
+    marketing_buffer = create_marketing_summary(summary)
 
     zip_buffer = BytesIO()
     with ZipFile(zip_buffer, "w") as zip_file:
@@ -123,3 +121,5 @@ if uploaded_file:
         file_name="drawing_review_outputs.zip",
         mime="application/zip"
     )
+else:
+    st.error("⚠️ No valid summary was generated. Please check the GPT response.")
