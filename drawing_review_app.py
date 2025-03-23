@@ -3,6 +3,8 @@ import ezdxf
 import fitz  # PyMuPDF
 import tempfile
 import os
+import openai
+import os
 from docx import Document
 
 st.set_page_config(page_title="Drawing Review Assistant", layout="wide")
@@ -21,15 +23,52 @@ def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
     return "\n".join([page.get_text() for page in doc])
 
-def generate_summary(text):
-    return {
-        "Product Type": "HVAC Component",
-        "Key Dimensions": "Height: 450mm, Width: 600mm, Depth: 300mm",
-        "Views": ["Plan", "Elevation", "Section"],
-        "Scale Note": "DO NOT SCALE",
-        "Use Cases": "Design coordination, submittals, BIM documentation",
-        "Technical Score": 8.5,
-    }
+# Set your API key securely
+openai.api_key = st.secrets["OPENAI_API_KEY"]  # Safe way using Streamlit secrets
+
+def generate_summary_with_gpt(text):
+    prompt = f"""
+You are a technical assistant that reviews architectural and engineering drawing text.
+
+Extract the following from the drawing text below:
+- Product type and intended use
+- Key dimensions
+- Drawing views detected (e.g. Plan, Elevation, Section)
+- Scale and annotation notes (e.g. DO NOT SCALE)
+- Recommended use-cases for this drawing
+- Technical score (out of 10) based on completeness, clarity, and usability
+
+Drawing text:
+\"\"\"
+{text}
+\"\"\"
+
+Respond in the following JSON format:
+{{
+  "Product Type": "...",
+  "Key Dimensions": "...",
+  "Views": [...],
+  "Scale Note": "...",
+  "Use Cases": "...",
+  "Technical Score": 0.0
+}}
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4
+    )
+
+    content = response["choices"][0]["message"]["content"]
+    
+    # Try to parse the response into a dictionary
+    import json
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        st.error("Error: GPT response could not be parsed.")
+        return {}
 
 def create_word_summary(summary, filename):
     doc = Document()
@@ -54,7 +93,7 @@ if uploaded_file:
     st.text_area("Raw Drawing Text", raw_text[:3000], height=300)
 
     st.subheader("📊 Technical Summary")
-    summary = generate_summary(raw_text)
+    summary = generate_summary_with_gpt(raw_text)
     for key, value in summary.items():
         st.write(f"**{key}:** {value}")
 
