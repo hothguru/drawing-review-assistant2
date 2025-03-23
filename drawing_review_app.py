@@ -99,7 +99,8 @@ if uploaded_file:
     st.text_area("Raw Drawing Text", raw_text[:3000], height=300)
 
     st.subheader("📊 GPT-Powered Technical Summary")
-    summary = generate_summary_with_gpt(raw_text)
+    
+summary = generate_summary_with_gpt(raw_text)
 
 if isinstance(summary, dict) and summary:
     for key, value in summary.items():
