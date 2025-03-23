@@ -3,3 +3,4 @@ ezdxf
 pymupdf
 python-docx
 pandas
+openai
