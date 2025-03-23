@@ -44,9 +44,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-\"\"\"
+"""
 {text}
-\"\"\"
+"""
 
 Respond in the following JSON format:
 {{
