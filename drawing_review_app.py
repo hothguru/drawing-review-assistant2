@@ -100,7 +100,7 @@ if uploaded_file:
 
     st.subheader("📊 GPT-Powered Technical Summary")
     summary = generate_summary_with_gpt(raw_text)
-    if isinstance(summary, dict) and summary:
+if isinstance(summary, dict) and summary:
     for key, value in summary.items():
         st.write(f"**{key}:** {value}")
 
