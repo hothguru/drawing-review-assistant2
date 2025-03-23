@@ -3,3 +3,5 @@ ezdxf
 pymupdf
 openai==0.28
 python-docx
+pandas
+XlsxWriter
