@@ -35,15 +35,21 @@ def generate_summary_with_gpt(text):
     prompt = f"""
 You are a technical assistant that reviews architectural and engineering drawing text.
 
-Extract the following from the drawing text below:
-- Product type and intended use
-- Key dimensions
-- Drawing views detected (e.g. Plan, Elevation, Section)
-- Scale and annotation notes (e.g. DO NOT SCALE)
-- Recommended use-cases for this drawing
-- Technical score (out of 10) based on completeness, clarity, and usability
+Your job is to extract a structured technical summary for AEC professionals from the text below.
 
-Drawing text:
+Please include:
+- Product type and intended use
+- Model number (if present)
+- Manufacturer name (if present)
+- Drawing title or number (if present)
+- Key dimensions (organized if possible)
+- Drawing views detected (Plan, Elevation, Section, Isometric, etc.)
+- Scale notes or annotations (e.g. DO NOT SCALE)
+- Recommended use-cases for this drawing
+- Technical score (out of 10) based on clarity, completeness, and dimensional usability
+- One-sentence justification for the score
+
+Here is the raw drawing text:
 \"\"\"
 {text}
 \"\"\"
@@ -51,11 +57,15 @@ Drawing text:
 Respond in the following JSON format:
 {{
   "Product Type": "...",
+  "Model Number": "...",
+  "Manufacturer": "...",
+  "Drawing Title/Number": "...",
   "Key Dimensions": "...",
   "Views": [...],
   "Scale Note": "...",
   "Use Cases": "...",
-  "Technical Score": 0.0
+  "Technical Score": 0.0,
+  "Score Justification": "..."
 }}
 """
 
@@ -70,10 +80,8 @@ Respond in the following JSON format:
 
     except openai.error.AuthenticationError:
         st.error("❌ OpenAI authentication failed. Check your API key.")
-
     except openai.error.OpenAIError as e:
         st.error(f"❌ OpenAI API error: {str(e)}")
-
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
 
@@ -81,19 +89,101 @@ Respond in the following JSON format:
 
 def create_word_summary(summary_dict):
     doc = Document()
-    doc.add_heading("Drawing Review Technical Summary", 0)
-    for key, value in summary_dict.items():
-        doc.add_paragraph(f"{key}: {value}")
+    doc.add_heading("Drawing Review Summary", 0)
+
+    # Metadata
+    doc.add_heading("Drawing Metadata", level=1)
+    doc.add_paragraph(f"Product Type: {summary_dict.get('Product Type', 'N/A')}")
+    doc.add_paragraph(f"Model Number: {summary_dict.get('Model Number', 'N/A')}")
+    doc.add_paragraph(f"Manufacturer: {summary_dict.get('Manufacturer', 'N/A')}")
+    doc.add_paragraph(f"Drawing Title/Number: {summary_dict.get('Drawing Title/Number', 'N/A')}")
+
+    # Dimensions
+    doc.add_heading("Key Dimensions", level=1)
+    doc.add_paragraph(summary_dict.get("Key Dimensions", "N/A"))
+
+    # Views
+    doc.add_heading("Drawing Views Detected", level=1)
+    views = summary_dict.get("Views", [])
+    if isinstance(views, list):
+        for view in views:
+            doc.add_paragraph(f"- {view}", style="List Bullet")
+    else:
+        doc.add_paragraph(views)
+
+    # Scale and Annotations
+    doc.add_heading("Scale and Annotations", level=1)
+    doc.add_paragraph(summary_dict.get("Scale Note", "N/A"))
+
+    # Use Cases
+    doc.add_heading("Recommended Use Cases", level=1)
+    doc.add_paragraph(summary_dict.get("Use Cases", "N/A"))
+
+    # Technical Evaluation
+    doc.add_heading("Technical Score", level=1)
+    doc.add_paragraph(f"Score: {summary_dict.get('Technical Score', 'N/A')}/10")
+    doc.add_paragraph(f"Justification: {summary_dict.get('Score Justification', 'N/A')}")
+
+    # Final thoughts
+    doc.add_paragraph("This document was generated automatically via the Drawing Review Assistant.")
+
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
     return buffer
 
 def create_excel_summary(summary_dict):
-    df = pd.DataFrame(list(summary_dict.items()), columns=["Category", "Value"])
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Drawing Summary")
+        workbook = writer.book
+        worksheet = workbook.add_worksheet("Drawing Summary")
+        writer.sheets["Drawing Summary"] = worksheet
+
+        row = 0
+
+        # Metadata Section
+        worksheet.write(row, 0, "🧾 Drawing Metadata")
+        row += 1
+        for label in ["Product Type", "Model Number", "Manufacturer", "Drawing Title/Number"]:
+            worksheet.write(row, 0, label)
+            worksheet.write(row, 1, summary_dict.get(label, ""))
+            row += 1
+
+        row += 1
+        worksheet.write(row, 0, "📐 Dimensions")
+        row += 1
+        worksheet.write(row, 0, "Key Dimensions")
+        worksheet.write(row, 1, summary_dict.get("Key Dimensions", ""))
+        row += 2
+
+        worksheet.write(row, 0, "🖼 Views Detected")
+        row += 1
+        views = summary_dict.get("Views", [])
+        if isinstance(views, list):
+            for v in views:
+                worksheet.write(row, 0, "- " + v)
+                row += 1
+        else:
+            worksheet.write(row, 0, views)
+            row += 1
+
+        row += 1
+        worksheet.write(row, 0, "📏 Scale & Annotations")
+        row += 1
+        worksheet.write(row, 0, "Scale Note")
+        worksheet.write(row, 1, summary_dict.get("Scale Note", ""))
+        row += 2
+
+        worksheet.write(row, 0, "✅ Use Cases")
+        worksheet.write(row, 1, summary_dict.get("Use Cases", ""))
+        row += 2
+
+        worksheet.write(row, 0, "📊 Technical Score")
+        worksheet.write(row, 1, summary_dict.get("Technical Score", ""))
+        row += 1
+        worksheet.write(row, 0, "Score Justification")
+        worksheet.write(row, 1, summary_dict.get("Score Justification", ""))
+
     buffer.seek(0)
     return buffer
 
