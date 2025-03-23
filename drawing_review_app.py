@@ -44,9 +44,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-"""
+\"\"\"
 {text}
-"""
+\"\"\"
 
 Respond in the following JSON format:
 {{
@@ -68,9 +68,9 @@ Respond in the following JSON format:
         content = response["choices"][0]["message"]["content"]
         return json.loads(content)
 
-    except AuthenticationError:
+    except openai.error.AuthenticationError:
         st.error("❌ OpenAI authentication failed. Check your API key.")
-    except OpenAIError as e:
+    except openai.error.OpenAIError as e:
         st.error(f"❌ OpenAI API error: {str(e)}")
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
