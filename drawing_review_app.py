@@ -106,9 +106,9 @@ if uploaded_file:
 
         st.subheader("📥 Download Summary")
         word_path = create_word_summary(summary, "drawing_summary.docx")
-            word_buffer = create_word_summary(summary)
-    excel_buffer = create_excel_summary(summary)
-    marketing_buffer = create_marketing_summary(summary)
+        word_buffer = create_word_summary(summary)
+        excel_buffer = create_excel_summary(summary)
+        marketing_buffer = create_marketing_summary(summary)
 
     zip_buffer = BytesIO()
     with ZipFile(zip_buffer, "w") as zip_file:
