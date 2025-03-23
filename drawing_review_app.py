@@ -4,12 +4,19 @@ import fitz  # PyMuPDF
 import tempfile
 import os
 import openai
-import os
+import json
 from docx import Document
 
 st.set_page_config(page_title="Drawing Review Assistant", layout="wide")
 
 st.title("📐 Drawing Review Assistant")
+
+# Safe API key setup
+if "OPENAI_API_KEY" in st.secrets:
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+else:
+    st.error("❌ OpenAI API key not found. Please set it in Streamlit Cloud → Manage App → Secrets.")
+    st.stop()
 
 uploaded_file = st.file_uploader("Upload a drawing file (.pdf or .dxf)", type=["pdf", "dxf"])
 
@@ -22,9 +29,6 @@ def extract_text_from_dxf(file_path):
 def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
     return "\n".join([page.get_text() for page in doc])
-
-# Set your API key securely
-openai.api_key = st.secrets["OPENAI_API_KEY"]  # Safe way using Streamlit secrets
 
 def generate_summary_with_gpt(text):
     prompt = f"""
@@ -54,21 +58,22 @@ Respond in the following JSON format:
 }}
 """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
-    )
-
-    content = response["choices"][0]["message"]["content"]
-    
-    # Try to parse the response into a dictionary
-    import json
     try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4
+        )
+        content = response["choices"][0]["message"]["content"]
         return json.loads(content)
+
+    except openai.error.AuthenticationError:
+        st.error("❌ OpenAI authentication failed. Check your API key.")
+    except openai.error.OpenAIError as e:
+        st.error(f"❌ OpenAI API error: {str(e)}")
     except json.JSONDecodeError:
-        st.error("Error: GPT response could not be parsed.")
-        return {}
+        st.error("❌ GPT response could not be parsed. Check the model output format.")
+    return {}
 
 def create_word_summary(summary, filename):
     doc = Document()
@@ -79,6 +84,7 @@ def create_word_summary(summary, filename):
     doc.save(path)
     return path
 
+# Main execution
 if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
         tmp_file.write(uploaded_file.read())
@@ -92,12 +98,13 @@ if uploaded_file:
     st.subheader("📄 Extracted Text Preview")
     st.text_area("Raw Drawing Text", raw_text[:3000], height=300)
 
-    st.subheader("📊 Technical Summary")
+    st.subheader("📊 GPT-Powered Technical Summary")
     summary = generate_summary_with_gpt(raw_text)
-    for key, value in summary.items():
-        st.write(f"**{key}:** {value}")
+    if summary:
+        for key, value in summary.items():
+            st.write(f"**{key}:** {value}")
 
-    st.subheader("📥 Download Summary")
-    word_path = create_word_summary(summary, "drawing_summary.docx")
-    with open(word_path, "rb") as f:
-        st.download_button("Download Word Summary", f, file_name="drawing_summary.docx")
+        st.subheader("📥 Download Summary")
+        word_path = create_word_summary(summary, "drawing_summary.docx")
+        with open(word_path, "rb") as f:
+            st.download_button("Download Word Summary", f, file_name="drawing_summary.docx")
