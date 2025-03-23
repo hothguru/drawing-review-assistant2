@@ -44,9 +44,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-"""
+\"\"\"
 {text}
-"""
+\"\"\"
 
 Respond in the following JSON format:
 {{
@@ -59,21 +59,24 @@ Respond in the following JSON format:
 }}
 """
 
-try:
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
-    )
-    content = response["choices"][0]["message"]["content"]
-    return json.loads(content)
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4
+        )
+        content = response["choices"][0]["message"]["content"]
+        return json.loads(content)
 
     except openai.error.AuthenticationError:
         st.error("❌ OpenAI authentication failed. Check your API key.")
+
     except openai.error.OpenAIError as e:
         st.error(f"❌ OpenAI API error: {str(e)}")
+
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
+
     return {}
 
 def create_word_summary(summary_dict):
