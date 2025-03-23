@@ -5,7 +5,10 @@ import tempfile
 import os
 import openai
 import json
+import pandas as pd
 from docx import Document
+from io import BytesIO
+from zipfile import ZipFile
 
 st.set_page_config(page_title="Drawing Review Assistant", layout="wide")
 
@@ -17,8 +20,6 @@ if "OPENAI_API_KEY" in st.secrets:
 else:
     st.error("❌ OpenAI API key not found. Please set it in Streamlit Cloud → Manage App → Secrets.")
     st.stop()
-
-uploaded_file = st.file_uploader("Upload a drawing file (.pdf or .dxf)", type=["pdf", "dxf"])
 
 def extract_text_from_dxf(file_path):
     doc = ezdxf.readfile(file_path)
@@ -43,9 +44,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-\"\"\"
+"""
 {text}
-\"\"\"
+"""
 
 Respond in the following JSON format:
 {{
@@ -73,17 +74,40 @@ Respond in the following JSON format:
         st.error(f"❌ OpenAI API error: {str(e)}")
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
-
     return {}
 
-def create_word_summary(summary, filename):
+def create_word_summary(summary_dict):
     doc = Document()
-    doc.add_heading("Drawing Review Summary", 0)
-    for k, v in summary.items():
-        doc.add_paragraph(f"{k}: {v}")
-    path = os.path.join(tempfile.gettempdir(), filename)
-    doc.save(path)
-    return path
+    doc.add_heading("Drawing Review Technical Summary", 0)
+    for key, value in summary_dict.items():
+        doc.add_paragraph(f"{key}: {value}")
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+def create_excel_summary(summary_dict):
+    df = pd.DataFrame(list(summary_dict.items()), columns=["Category", "Value"])
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name="Drawing Summary")
+    buffer.seek(0)
+    return buffer
+
+def create_marketing_summary(summary_dict):
+    doc = Document()
+    doc.add_heading("Drawing Overview", 0)
+    doc.add_paragraph("This drawing showcases a high-quality, professionally detailed component suitable for architectural and engineering coordination.")
+    doc.add_paragraph(f"Product Type: {summary_dict.get('Product Type', 'N/A')}")
+    doc.add_paragraph(f"Key Dimensions: {summary_dict.get('Key Dimensions', 'N/A')}")
+    doc.add_paragraph(f"Recommended Use: {summary_dict.get('Use Cases', 'N/A')}")
+    doc.add_paragraph("This drawing meets expectations for use in submittals, BIM integration, and construction coordination workflows.")
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+uploaded_file = st.file_uploader("Upload a drawing file (.pdf or .dxf)", type=["pdf", "dxf"])
 
 if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
@@ -99,29 +123,28 @@ if uploaded_file:
     st.text_area("Raw Drawing Text", raw_text[:3000], height=300)
 
     st.subheader("📊 GPT-Powered Technical Summary")
+    summary = generate_summary_with_gpt(raw_text)
 
-if isinstance(summary, dict) and summary:
-    for key, value in summary.items():
-        st.write(f"**{key}:** {value}")
+    if isinstance(summary, dict) and summary:
+        for key, value in summary.items():
+            st.write(f"**{key}:** {value}")
 
-summary = generate_summary_with_gpt(raw_text)
+        word_buffer = create_word_summary(summary)
+        excel_buffer = create_excel_summary(summary)
+        marketing_buffer = create_marketing_summary(summary)
 
-    word_buffer = create_word_summary(summary)
-    excel_buffer = create_excel_summary(summary)
-    marketing_buffer = create_marketing_summary(summary)
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "w") as zip_file:
+            zip_file.writestr("technical_summary.docx", word_buffer.getvalue())
+            zip_file.writestr("drawing_summary.xlsx", excel_buffer.getvalue())
+            zip_file.writestr("marketing_summary.docx", marketing_buffer.getvalue())
+        zip_buffer.seek(0)
 
-    zip_buffer = BytesIO()
-    with ZipFile(zip_buffer, "w") as zip_file:
-        zip_file.writestr("technical_summary.docx", word_buffer.getvalue())
-        zip_file.writestr("drawing_summary.xlsx", excel_buffer.getvalue())
-        zip_file.writestr("marketing_summary.docx", marketing_buffer.getvalue())
-    zip_buffer.seek(0)
-
-    st.download_button(
-        "📦 Download All Files (ZIP)",
-        zip_buffer,
-        file_name="drawing_review_outputs.zip",
-        mime="application/zip"
-    )
-else:
-    st.error("⚠️ No valid summary was generated. Please check the GPT response.")
+        st.download_button(
+            "📦 Download All Files (ZIP)",
+            zip_buffer,
+            file_name="drawing_review_outputs.zip",
+            mime="application/zip"
+        )
+    else:
+        st.error("⚠️ No valid summary was generated. Please check the GPT response.")
