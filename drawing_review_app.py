@@ -59,14 +59,14 @@ Respond in the following JSON format:
 }}
 """
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.4
-        )
-        content = response["choices"][0]["message"]["content"]
-        return json.loads(content)
+try:
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4
+    )
+    content = response["choices"][0]["message"]["content"]
+    return json.loads(content)
 
     except openai.error.AuthenticationError:
         st.error("❌ OpenAI authentication failed. Check your API key.")
