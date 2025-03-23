@@ -4,6 +4,7 @@ import fitz  # PyMuPDF
 import tempfile
 import os
 import openai
+from openai import OpenAIError, AuthenticationError
 import json
 from docx import Document
 
@@ -43,9 +44,9 @@ Extract the following from the drawing text below:
 - Technical score (out of 10) based on completeness, clarity, and usability
 
 Drawing text:
-\"\"\"
+"""
 {text}
-\"\"\"
+"""
 
 Respond in the following JSON format:
 {{
@@ -67,9 +68,9 @@ Respond in the following JSON format:
         content = response["choices"][0]["message"]["content"]
         return json.loads(content)
 
-    except openai.error.AuthenticationError:
+    except AuthenticationError:
         st.error("❌ OpenAI authentication failed. Check your API key.")
-    except openai.error.OpenAIError as e:
+    except OpenAIError as e:
         st.error(f"❌ OpenAI API error: {str(e)}")
     except json.JSONDecodeError:
         st.error("❌ GPT response could not be parsed. Check the model output format.")
@@ -84,7 +85,6 @@ def create_word_summary(summary, filename):
     doc.save(path)
     return path
 
-# Main execution
 if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
         tmp_file.write(uploaded_file.read())
