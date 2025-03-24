@@ -249,3 +249,7 @@ if uploaded_file:
         )
     else:
         st.error("⚠️ No valid summary was generated. Please check the GPT response.")
+
+    if st.button("🔁 Clear and Upload a New Drawing"):
+        st.session_state.clear()
+        st.experimental_rerun()
