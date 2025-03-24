@@ -212,6 +212,14 @@ if uploaded_file:
     else:
         raw_text = extract_text_from_pdf(tmp_path)
 
+    # Use session state to store summary per upload
+    if "summary" not in st.session_state or st.session_state.get("last_file") != uploaded_file.name:
+        summary = generate_summary_with_gpt(raw_text)
+        st.session_state["summary"] = summary
+        st.session_state["last_file"] = uploaded_file.name
+    else:
+        summary = st.session_state["summary"]
+    
     st.subheader("📄 Extracted Text Preview")
     st.text_area("Raw Drawing Text", raw_text[:3000], height=300)
 
